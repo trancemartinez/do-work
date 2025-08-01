@@ -1,141 +1,176 @@
+//
+//  AnyCodable.swift
+//  Do Work
+//
+//  Created by Chance Martinez on 7/31/25.
+//
+
+
 import Foundation
 
 /**
- A type-erased `Codable` value that forwards encoding and decoding
- to an underlying value of any supported type.
+ A type-erased `Codable` value.
 
- Supports JSON-compatible types: `Bool`, numbers, `String`,
- dictionaries, arrays, and `nil` (represented as `Void`).
+ The `AnyCodable` type forwards encoding and decoding responsibilities
+ to an underlying value, hiding its specific underlying type.
 
- Use `AnyCodable` to encode/decode heterogeneous or dynamic JSON
- structures where types are unknown at compile time.
+ You can encode or decode mixed-type values in dictionaries
+ and other collections that require `Encodable` or `Decodable` conformance
+ by declaring their contained type to be `AnyCodable`.
  */
-@frozen public struct AnyCodable: Codable {
+@frozen public struct AnyCodable: Codable, Equatable, Hashable {
     public let value: Any
 
     public init<T>(_ value: T?) {
         self.value = value ?? ()
     }
-}
 
-// MARK: - Encoding & Decoding (delegated to internal protocols)
-extension AnyCodable: _AnyEncodable, _AnyDecodable {}
+    // MARK: - Decodable
 
-// MARK: - Equatable
-extension AnyCodable: Equatable {
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+
+        if container.decodeNil() {
+            self.value = ()
+        } else if let bool = try? container.decode(Bool.self) {
+            self.value = bool
+        } else if let int = try? container.decode(Int.self) {
+            self.value = int
+        } else if let double = try? container.decode(Double.self) {
+            self.value = double
+        } else if let string = try? container.decode(String.self) {
+            self.value = string
+        } else if let array = try? container.decode([AnyCodable].self) {
+            self.value = array.map { $0.value }
+        } else if let dictionary = try? container.decode([String: AnyCodable].self) {
+            var dict: [String: Any] = [:]
+            for (key, anyCodableValue) in dictionary {
+                dict[key] = anyCodableValue.value
+            }
+            self.value = dict
+        } else {
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Unsupported type")
+        }
+    }
+
+    // MARK: - Encodable
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+
+        switch value {
+        case is Void:
+            try container.encodeNil()
+        case let bool as Bool:
+            try container.encode(bool)
+        case let int as Int:
+            try container.encode(int)
+        case let double as Double:
+            try container.encode(double)
+        case let string as String:
+            try container.encode(string)
+        case let array as [Any]:
+            let encodableArray = array.map { AnyCodable($0) }
+            try container.encode(encodableArray)
+        case let dictionary as [String: Any]:
+            let encodableDict = dictionary.mapValues { AnyCodable($0) }
+            try container.encode(encodableDict)
+        default:
+            let context = EncodingError.Context(codingPath: container.codingPath, debugDescription: "Unsupported type")
+            throw EncodingError.invalidValue(value, context)
+        }
+    }
+
+    // MARK: - Equatable
+
     public static func == (lhs: AnyCodable, rhs: AnyCodable) -> Bool {
         switch (lhs.value, rhs.value) {
-        case (is Void, is Void): return true
-        case let (l as Bool, r as Bool): return l == r
-        case let (l as Int, r as Int): return l == r
-        case let (l as Int8, r as Int8): return l == r
-        case let (l as Int16, r as Int16): return l == r
-        case let (l as Int32, r as Int32): return l == r
-        case let (l as Int64, r as Int64): return l == r
-        case let (l as UInt, r as UInt): return l == r
-        case let (l as UInt8, r as UInt8): return l == r
-        case let (l as UInt16, r as UInt16): return l == r
-        case let (l as UInt32, r as UInt32): return l == r
-        case let (l as UInt64, r as UInt64): return l == r
-        case let (l as Float, r as Float): return l == r
-        case let (l as Double, r as Double): return l == r
-        case let (l as String, r as String): return l == r
-        case let (l as [String: AnyCodable], r as [String: AnyCodable]): return l == r
-        case let (l as [AnyCodable], r as [AnyCodable]): return l == r
-        case let (l as [String: Any], r as [String: Any]):
-            return NSDictionary(dictionary: l).isEqual(to: r)
-        case let (l as [Any], r as [Any]):
-            return NSArray(array: l).isEqual(to: r)
-        case (is NSNull, is NSNull): return true
-        default: return false
+        case is (Void, Void):
+            return true
+        case let (lhs as Bool, rhs as Bool):
+            return lhs == rhs
+        case let (lhs as Int, rhs as Int):
+            return lhs == rhs
+        case let (lhs as Double, rhs as Double):
+            return lhs == rhs
+        case let (lhs as String, rhs as String):
+            return lhs == rhs
+        case let (lhs as [String: AnyCodable], rhs as [String: AnyCodable]):
+            return lhs == rhs
+        case let (lhs as [AnyCodable], rhs as [AnyCodable]):
+            return lhs == rhs
+        case let (lhs as [String: Any], rhs as [String: Any]):
+            return NSDictionary(dictionary: lhs).isEqual(to: rhs)
+        case let (lhs as [Any], rhs as [Any]):
+            return NSArray(array: lhs).isEqual(to: rhs)
+        default:
+            return false
         }
     }
-}
 
-// MARK: - CustomStringConvertible & Debug
-extension AnyCodable: CustomStringConvertible {
-    public var description: String {
+    // MARK: - Hashable
+
+    public func hash(into hasher: inout Hasher) {
         switch value {
-        case is Void: return "nil"
-        case let value as CustomStringConvertible: return value.description
-        default: return String(describing: value)
+        case let v as Bool:
+            hasher.combine(v)
+        case let v as Int:
+            hasher.combine(v)
+        case let v as Double:
+            hasher.combine(v)
+        case let v as String:
+            hasher.combine(v)
+        case let v as [String: AnyCodable]:
+            hasher.combine(v)
+        case let v as [AnyCodable]:
+            hasher.combine(v)
+        default:
+            break
         }
     }
 }
 
-extension AnyCodable: CustomDebugStringConvertible {
-    public var debugDescription: String {
-        if let debugValue = value as? CustomDebugStringConvertible {
-            return "AnyCodable(\(debugValue.debugDescription))"
-        }
-        return "AnyCodable(\(description))"
-    }
-}
+// MARK: - ExpressibleBy Literals
 
-// MARK: - ExpressibleBy*Literal for easier usage
-extension AnyCodable: ExpressibleByNilLiteral,
-                      ExpressibleByBooleanLiteral,
-                      ExpressibleByIntegerLiteral,
-                      ExpressibleByFloatLiteral,
-                      ExpressibleByStringLiteral,
-                      ExpressibleByStringInterpolation,
-                      ExpressibleByArrayLiteral,
-                      ExpressibleByDictionaryLiteral {
-
+extension AnyCodable: ExpressibleByNilLiteral {
     public init(nilLiteral: ()) {
         self.init(())
     }
+}
 
+extension AnyCodable: ExpressibleByBooleanLiteral {
     public init(booleanLiteral value: Bool) {
         self.init(value)
     }
+}
 
+extension AnyCodable: ExpressibleByIntegerLiteral {
     public init(integerLiteral value: Int) {
         self.init(value)
     }
+}
 
+extension AnyCodable: ExpressibleByFloatLiteral {
     public init(floatLiteral value: Double) {
         self.init(value)
     }
+}
 
+extension AnyCodable: ExpressibleByStringLiteral {
     public init(stringLiteral value: String) {
         self.init(value)
     }
+}
 
-    public init(stringInterpolation: String.StringInterpolation) {
-        self.init(stringInterpolation.description)
-    }
-
-    public init(arrayLiteral elements: AnyCodable...) {
+extension AnyCodable: ExpressibleByArrayLiteral {
+    public init(arrayLiteral elements: Any...) {
         self.init(elements)
-    }
-
-    public init(dictionaryLiteral elements: (String, AnyCodable)...) {
-        self.init(Dictionary(uniqueKeysWithValues: elements))
     }
 }
 
-// MARK: - Hashable
-extension AnyCodable: Hashable {
-    public func hash(into hasher: inout Hasher) {
-        switch value {
-        case let v as Bool: hasher.combine(v)
-        case let v as Int: hasher.combine(v)
-        case let v as Int8: hasher.combine(v)
-        case let v as Int16: hasher.combine(v)
-        case let v as Int32: hasher.combine(v)
-        case let v as Int64: hasher.combine(v)
-        case let v as UInt: hasher.combine(v)
-        case let v as UInt8: hasher.combine(v)
-        case let v as UInt16: hasher.combine(v)
-        case let v as UInt32: hasher.combine(v)
-        case let v as UInt64: hasher.combine(v)
-        case let v as Float: hasher.combine(v)
-        case let v as Double: hasher.combine(v)
-        case let v as String: hasher.combine(v)
-        case let v as [String: AnyCodable]: hasher.combine(v)
-        case let v as [AnyCodable]: hasher.combine(v)
-        default: break
-        }
+extension AnyCodable: ExpressibleByDictionaryLiteral {
+    public init(dictionaryLiteral elements: (String, Any)...) {
+        let dict = Dictionary(uniqueKeysWithValues: elements)
+        self.init(dict)
     }
 }

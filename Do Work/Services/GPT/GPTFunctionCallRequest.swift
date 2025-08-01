@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct GPTFunctionCallPayload: Codable {
+struct GPTFunctionCallRequest: Codable {
     let model: String
     let messages: [Message]
     let functions: [FunctionDefinition]?
@@ -25,7 +25,7 @@ struct FunctionDefinition: Codable {
     let arguments: [String: AnyCodable]
 }
 
-enum FunctionCallDirective: Codable {
+enum FunctionCallDirective: Codable, Equatable {
     case auto
     case named(String)
 

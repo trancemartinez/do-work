@@ -1,5 +1,13 @@
+//
+//  GPTIntegrationTests.swift
+//  Do Work
+//
+//  Created by Chance Martinez on 8/1/25.
+//
+
+
+@testable import Do_Work
 import XCTest
-@testable import DoWork
 
 final class GPTIntegrationTests: XCTestCase {
 

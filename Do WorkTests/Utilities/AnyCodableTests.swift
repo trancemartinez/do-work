@@ -1,3 +1,11 @@
+//
+//  AnyCodableTests.swift
+//  Do Work
+//
+//  Created by Chance Martinez on 7/31/25.
+//
+
+@testable import Do_Work
 import XCTest
 
 final class AnyCodableTests: XCTestCase {
@@ -49,5 +57,46 @@ final class AnyCodableTests: XCTestCase {
         let value = AnyCodable(Uncodable())
         
         XCTAssertThrowsError(try JSONEncoder().encode(value))
+    }
+    func testEncodeDecode_Double() throws {
+        let original = AnyCodable(3.14159)
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
+        XCTAssertEqual(original, decoded)
+    }
+
+    func testEncodeDecode_NestedDictionary() throws {
+        let original = AnyCodable(["outer": ["inner": 1]])
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
+        XCTAssertEqual(original, decoded)
+    }
+
+    func testEncodeDecode_NestedArray() throws {
+        let original = AnyCodable([[1, 2], [3, 4]])
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
+        XCTAssertEqual(original, decoded)
+    }
+
+    func testEncodeDecode_EmptyArray() throws {
+        let original = AnyCodable([AnyCodable]())
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
+        XCTAssertEqual(original, decoded)
+    }
+
+    func testEncodeDecode_EmptyDictionary() throws {
+        let original = AnyCodable([String: AnyCodable]())
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
+        XCTAssertEqual(original, decoded)
+    }
+
+    func testEncodeDecode_NSNull() throws {
+        let original = AnyCodable(nil)
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(AnyCodable.self, from: data)
+        XCTAssertEqual(original, decoded)
     }
 }
