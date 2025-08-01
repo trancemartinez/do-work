@@ -1,21 +1,22 @@
 # Do Work
 
-SwiftUI app for adaptive workout logging using GPT-powered natural language input.
+A SwiftUI app for adaptive workout logging powered by GPT-driven natural language input.
 
 ## Progress
 
-- Defined core SwiftData models:
-  - Exercise, ExerciseAlias
-  - Effort (a set linked to Exercise and Session)
-  - Session (groups Efforts)
-  - UserProfile (user info and unit prefs)
-  - BodyMetrics (historical body data)
-- Modeled relationships with inverse keys.
-- Canonical units stored; display units handled in UserProfile.
-- Architecture uses SwiftUI without ViewModels, relies on `@Observable`, `@Query`, `@Environment`.
-- NLP parsing integration planned.
+- ✅ Core SwiftData models defined:
+  - `Exercise`, `ExerciseAlias`
+  - `Effort` (linked to `Exercise` and `Session`)
+  - `Session` (groups multiple `Efforts`)
+  - `UserProfile` (stores user info and unit preferences)
+  - `BodyMetrics` (historical tracking of physical data)
+- ✅ Relationships modeled using inverse keys
+- ✅ Canonical units stored; display units derived via `UserProfile` preferences
+- ✅ Architecture uses native SwiftUI patterns (`@Observable`, `@Query`, `@Environment`)
+- ✅ Basic GPT integration scaffolding and test coverage in place
 
 ## Next
 
-- Build NLP service.
-- Develop UI for input and session views.
+- 🚧 Build out the GPT NLP service
+- 🚧 Create UI for natural language input and session views
+- 🚧 Add more advanced logging and metric features
